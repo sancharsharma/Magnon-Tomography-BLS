@@ -5,4 +5,4 @@ The file 'Data_Gen.py' generates the relevant data, i.e. the wigner functions of
 To generate the paper plots, the .hf file should be used in 'Plots.py'.
 
 The helper file 'Sys_defs.py' defines the relevant probability distributions depending on the magnon state and also generates the optical output data.
-The helper file 'Classes.py' defines the Tomo class that contains the reconstructions algorithm.
+The helper file 'Classes.py' defines the Tomo class that contains the reconstruction algorithm.
