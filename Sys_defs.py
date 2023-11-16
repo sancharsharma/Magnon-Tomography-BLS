@@ -10,13 +10,14 @@ from importlib import reload
 import Classes as Cls
 reload(Cls)
 
-# Function for squeezed coherent state
+# Function for squeezed coherent state with coherent value alpha_c = alpha0, squeezing magnitude e^r_s=sqexp0, and squeezing direction psi_s = sqdir0. 'hil_size' is the Hilbert space size, 'no_samples' is the number of optical data points generated, 'ampl'=theta is the magnon signal amplitude, 'sq_exp'=e^r is the input squeezing
 def sqcoh_magnon(alpha0,sqexp0,sqdir0,hil_size=40,no_samples=1e4,ampl='none',sq_exp='none'):
 
-	Sys = Cls.Tomo()
+	Sys = Cls.Tomo()  # Contains the reconstruction algorithm
 	Sys.ampl = ampl
 	Sys.sq_exp = sq_exp
 
+	# Photon probability density p_a
 	def ph_prob(a,phi):
 		mean = 2*np.sin(ampl) * (alpha0*np.exp(-1j*phi)).real
 		sigma_phi_sq = sqexp0**2 * np.sin(phi-sqdir0)**2 + np.cos(phi-sqdir0)**2/sqexp0**2
@@ -28,15 +29,16 @@ def sqcoh_magnon(alpha0,sqexp0,sqdir0,hil_size=40,no_samples=1e4,ampl='none',sq_
 
 	Sys.ph_prob = ph_prob
 
+	# Parameters for optical data generation. 'amax' is the maximum value of 'a' taken, 'pmax' is the maximum probability amplitude.
 	amax = 3*np.abs(alpha0)**2  
-	var_min = (np.cos(ampl)**2)/sq_exp**2 + np.sin(ampl)**2/sqexp0**2
+	var_min = np.cos(ampl)**2/sq_exp**2 + np.sin(ampl)**2/sqexp0**2
 	pmax = 1/(np.sqrt(2*np.pi*var_min))
 
 	Sys.data = Sys.data_from_prob_ph(pmax = pmax, amax = amax, no_samples = no_samples)
 		
 	return Sys
 
-# Function for cat state
+# Function for cat state with each component at \pm alpha_c=alpha0 and phase difference psi_c=phi0
 def cat_magnon(alpha0,phi0,hil_size=40,no_samples=1e4,ampl='none',sq_exp='none'):
 
 	Sys = Cls.Tomo()
@@ -68,7 +70,7 @@ def cat_magnon(alpha0,phi0,hil_size=40,no_samples=1e4,ampl='none',sq_exp='none')
 ## Function to call for creating a general state of magnons
 def general_magnon(vec,hil_size=40,no_samples=1e4,ampl='none'):
 
-	raise ValueError("Forbidden entry. Try not to squeeze in.")
+	raise ValueError("The function is finished but not well tested. Use it only after understanding!")
 
 	alpha = np.array(vec)
 	max_m = len(alpha)
@@ -99,7 +101,7 @@ def general_magnon(vec,hil_size=40,no_samples=1e4,ampl='none'):
 	
 	to_python_funcs = sym.lambdify([A,P,Th] + Alpha,prob_opt_sym)  # Converts a symbolic expression into a python function with all symbols becoming arguments
 
-	Sys.ph_prob = lambda a,phi: to_python_funcs(*([a,phi,np.pi/4] + list(vec))).real  # Keeping a,phi undefined while putting the value of Th=ampl and Alpha=vec
+	Sys.ph_prob = lambda a,phi: to_python_funcs(*([a,phi,ampl] + list(vec))).real  # Keeping a,phi undefined while putting the value of Th=ampl and Alpha=vec
 
 	### Numerical method: Excruciatingly slow
 #	mag_prob_herm = lambda m,phi: sum([alpha[n]* np.exp(-1j*n*phi)*hermite(n)(m/np.sqrt(2))/np.sqrt(2**n * factorial(n)) for n in range(max_m)])
@@ -110,7 +112,7 @@ def general_magnon(vec,hil_size=40,no_samples=1e4,ampl='none'):
 #			)**2
 #		,-np.inf,np.inf)[0]
 
-	## These values should depend on 'alpha' but I don't have a formula for them though
+	## I don't have a formula for these
 	amax = 8
 	pmax = 0.6
 
@@ -120,5 +122,3 @@ def general_magnon(vec,hil_size=40,no_samples=1e4,ampl='none'):
 	Sys.mag_state = qt.Qobj(alpha)
 
 	return Sys
-
-
