@@ -1,3 +1,5 @@
+# This file contains several untested functions which can be removed to make it cleaner.
+
 import scipy.integrate as integ
 from scipy.special import erf
 import numpy as np
@@ -10,19 +12,21 @@ import tqdm
 class Tomo:
 	
 	def __init__(self):
-		self.data = 'none'
-		self.ph_state = 'none'
-		self.mag_state = 'none'
-		self.ph_wig = 'none'
-		self.mag_wig = 'none'
-		self.ph_prob = 'none'
-		self.mag_prob = 'none'
-		self.ampl = 'none'
-		self.sq_exp = 1
 
-	##################### Photon Functions
-	def prob_from_wig_ph(self,a,phi):
-		
+		self.data = 'none'  # Optical data
+		self.ph_state = 'none'  # Photon State
+		self.mag_state = 'none'  # Magnon State
+		self.ph_wig = 'none'  # Photon Wigner function
+		self.mag_wig = 'none'  # Magnon Wigner function
+		self.ph_prob = 'none'  # Photon probability density
+		self.mag_prob = 'none'   # Magnon probability density
+		self.ampl = 'none'  # Magnon Signal Amplitude, 'theta'
+		self.sq_exp = 1  # Squeezing in the input, 'e^r'
+
+	##################### Functions for converting among different representations of photons
+
+	# Probability from Wigner function
+	def prob_from_wig_ph(self,a,phi): 		
 		return 'This is not implemented'
 		if (self.ph_wig == 'none'):
 			raise ValueError('Supply photon wigner function using self.ph_wig = lambda a: ...')
@@ -35,16 +39,16 @@ class Tomo:
 		int_res = integ.quad(integrand,-np.inf,np.inf)[0]
 		return int_res/(4*np.pi)
 	
-	def data_from_prob_ph(self,pmax = 1, amax = 6, no_samples = 5e3):
-		# Using the so-called rejection sampling
+	# Optical data from photon probability density using the so-called rejection sampling. pmax: The maximum value of probability function, amax: The maximum value of observations, no_samples: number of samples to be generated
+	def data_from_prob_ph(self,pmax = 1, amax = 6, no_samples = 5e3):  
 
 		if (self.ph_prob == 'none'):
 			raise ValueError('Supply photon probability function using self.ph_prob = lambda a,phi: ...')
 		
-		return _rejection_sampling_(self.ph_prob,pmax = pmax, amax = amax, no_samples = no_samples)
+		return _rejection_sampling_(self.ph_prob, pmax = pmax, amax = amax, no_samples = no_samples)
 		
-		
-	def wig_from_data_ph(self,alpha,kc=5): #alpha wigner function input and kc as cut-off in the kernel
+	# Wigner function from data using direct inversion. 'alpha' is the Wigner argument and 'kc' is the high wave-vector cut-off for the inversion to be well-defined
+	def wig_from_data_ph(self,alpha,kc=5): 
 		
 		if (self.data == 'none'):
 			raise ValueError('Supply data using self.data = [[a1,phi1],...]')
@@ -65,7 +69,8 @@ class Tomo:
 
 		return np.mean(K_data)
 	
-	def den_from_data_ph(self, hil_size=40, rho_tol=0.005, max_iter=100): #hil_size: Hilbert space of the output, rho_tol: error tolerance in the recursion, max_iter: maximum number of iterations
+	# Photon density Matrix from optical data using MLE. hil_size: Hilbert space of the output, rho_tol: error tolerance in the recursion, max_iter: maximum number of iterations
+	def den_from_data_ph(self, hil_size=40, rho_tol=0.005, max_iter=100):
 		
 		if (self.data == 'none'):
 			raise ValueError('Supply data using self.data = [[a1,phi1],...]')
@@ -81,7 +86,9 @@ class Tomo:
 		return _fixed_pt_(Projs,rho_tol=rho_tol,max_iter=max_iter)
 
 
-	##################### Magnon Functions
+	##################### Functions when a magnon state is given
+
+	# Optical data from magnon probability density using numerical convolution and the so-called rejection sampling. pmax: The maximum value of probability function, amax: The maximum value of observations, no_samples: number of samples to be generated
 	def data_from_prob_mag(self, pmax = 1, amax = 6, no_samples = 5e3): # pmax: The maximum value of probability function, amax: The maximum value of observations, no_samples: number of samples to be generated
 		return 'This is not tested'
 
@@ -102,9 +109,11 @@ class Tomo:
 		return _rejection_sampling_(_prob_opt_,pmax = pmax, amax = amax, no_samples = no_samples)
 
 
+	# Wigner function of magnons from optical data using direct inversion. 'alpha' is the Wigner argument and 'b0' is a cut-off to remove "high frequency" noise.
 	def wig_from_data_mag(self,alpha,b0=2):
 		
-		print("This generally gives terrible results. Try your own regularization.")
+		return "This generally gives terrible results. Use it only if you understand what this function does."
+
 		if (self.data == 'none'):
 			raise ValueError('Supply data using self.data = [[a1,phi1],...]')
 
@@ -113,7 +122,7 @@ class Tomo:
 
 		ampl = self.ampl
 
-		def _Kmod_exp_(y): # In the notation of the paper, this is Kmod(y*cos(ampl))/tan(ampl)**2
+		def _Kmod_exp_(y): 
 			T1 = 2*(np.exp(b0**2/2)*np.cos(b0*y) - 1)
 			T2_1 = np.sqrt(2*np.pi)*y*np.exp(y**2/2)
 			T2_2 = np.real(erf((y+1j*b0)/np.sqrt(2))) - erf(y/np.sqrt(2))
@@ -130,6 +139,7 @@ class Tomo:
 
 		return np.tan(ampl)**2*np.mean(K_data)
 	
+	# Magnon density Matrix from optical data using MLE. hil_size: Hilbert space of the output, rho_tol: error tolerance in the recursion, max_iter: maximum number of iterations
 	def den_from_data_mag(self, hil_size=40, rho_tol=0.01, max_iter=100):
 		
 		if (self.data == 'none'):
@@ -148,7 +158,8 @@ class Tomo:
 
 ## Helper functions
 
-def _rejection_sampling_(prob,pmax = 1, amax = 6, no_samples = 5e3): # pmax: The maximum value of probability function, amax: The maximum value of observations, no_samples: number of samples to be generated
+# Generates data for a given probability density. pmax: The maximum value of probability function, amax: The maximum value of observations, no_samples: number of samples to be generated
+def _rejection_sampling_(prob,pmax = 1, amax = 6, no_samples = 1e4): 
 
 	samps_found = 0
 	data = []
@@ -158,7 +169,7 @@ def _rejection_sampling_(prob,pmax = 1, amax = 6, no_samples = 5e3): # pmax: The
 		a = amax*(2*np.random.rand() - 1)
 		phi = np.pi*np.random.rand()
 
-		# Reject (a,phi) with a relative probability prob(a,phi)
+		# Accept (a,phi) with a probability prob(a,phi)/pmax
 		p = pmax*np.random.rand()
 		if (prob(a,phi) > p):
 			data.append([a,phi])
@@ -166,15 +177,17 @@ def _rejection_sampling_(prob,pmax = 1, amax = 6, no_samples = 5e3): # pmax: The
 
 	return data
 
+# The wave-function corresponding to a particular optical observation. This function needs improvements!
 def _psi_(entry,hil_size = 40):
 	a = entry[0]
 	phi = entry[1]
 	
-	Sq = qt.squeeze(hil_size,1.4*np.exp(2j*phi))  # The squeezing amount should depend on the size of hilbert space and displacement.
+	Sq = qt.squeeze(hil_size,1.4*np.exp(2j*phi))  # The squeezing amount 1.5 should depend on the size of hilbert space and displacement. I don't know how to automatize it.
 	Disp = qt.displace(hil_size,a*np.exp(1j*phi)/2)
-	return Disp*(Sq*qt.fock(hil_size,0)) # The displacement of this state is slightly different than what we want.
 
+	return Disp*(Sq*qt.fock(hil_size,0)) # The displacement of this state is slightly different than what we want because of the squeezing.
 
+# The projection operator P (as used in the paper) for a given entry = [a,phi], theta = ampl, e^r = sq_exp, and hilbert space size hil_size. We can safely ignore a constant pre-factor as the definition of R doesn't depend on it.
 def _proj_(entry,ampl,sq_exp,hil_size):
 	a = entry[0]
 	phi = entry[1]
@@ -185,9 +198,10 @@ def _proj_(entry,ampl,sq_exp,hil_size):
 
 	return exp_arg.expm()
 
+# Solving the fixed point equation for MLE iteratively with the set of P-operators 'Projs', 'rho_tol' is the tolerance of the iteration, 'max_iter' is the maximum number of iterations allowed.
 def _fixed_pt_(Projs,rho_tol = 0.005,max_iter = 100):
 	
-	Projs_norm = [P/P.tr() for P in Projs if P.tr() > 0]
+	Projs_norm = [P/P.tr() for P in Projs if P.tr() > 0]  # To avoid extremely large or extremely small numbers
 	N = len(Projs_norm)
 
 	def _R_(rho):
@@ -195,7 +209,7 @@ def _fixed_pt_(Projs,rho_tol = 0.005,max_iter = 100):
 
 	rho_unnorm = sum(Projs_norm)
 	rho_cur = rho_unnorm/rho_unnorm.tr()
-	pbar = tqdm.tqdm(total = max_iter)
+	pbar = tqdm.tqdm(total = max_iter)  # The handle for a bar that tracks progress.
 
 	for i in range(max_iter):
 
@@ -211,12 +225,8 @@ def _fixed_pt_(Projs,rho_tol = 0.005,max_iter = 100):
 		pbar.set_description(msg_conv)
 		pbar.update(1)
 
-		rho_cur = rho_next/rho_next.tr()
-
+		rho_cur = rho_next/rho_next.tr()  # Normalize to reduce rounding errors
 	
 	return rho_cur
 
 
-
-
-	
